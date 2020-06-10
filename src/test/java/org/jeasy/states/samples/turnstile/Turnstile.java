@@ -102,6 +102,9 @@ class Launcher {
                 .registerTransition(coinUnlocked)
                 .build();
 
+        turnstileStateMachine.addTransitionHandler(transition ->
+                System.out.println("Turnstile state : " + transition.getTargetState().getName()));
+
         /*
          * Fire some events and print FSM state
          */
@@ -118,13 +121,11 @@ class Launcher {
                 System.out.println("input = " + input.trim());
                 System.out.println("Firing push event..");
                 turnstileStateMachine.fire(new PushEvent());
-                System.out.println("Turnstile state : " + turnstileStateMachine.getCurrentState().getName());
             }
             if (input.trim().equalsIgnoreCase("c")) {
                 System.out.println("input = " + input.trim());
                 System.out.println("Firing coin event..");
                 turnstileStateMachine.fire(new CoinEvent());
-                System.out.println("Turnstile state : " + turnstileStateMachine.getCurrentState().getName());
             }
             if (input.trim().equalsIgnoreCase("q")) {
                 System.out.println("input = " + input.trim());

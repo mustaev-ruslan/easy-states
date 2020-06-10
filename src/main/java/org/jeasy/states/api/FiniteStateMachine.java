@@ -82,4 +82,8 @@ public interface FiniteStateMachine {
      */
     State fire(Event event) throws FiniteStateMachineException;
 
+    void addTransitionHandler(TransitionHandler transitionHandler);
+
+    void removeTransitionHandler(TransitionHandler transitionHandler);
+
 }

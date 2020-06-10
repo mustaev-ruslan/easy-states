@@ -41,6 +41,7 @@ final class FiniteStateMachineImpl implements FiniteStateMachine {
     private Set<Transition> transitions;
     private Event lastEvent;
     private Transition lastTransition;
+    private final Set<TransitionHandler> transitionHandlers;
 
     FiniteStateMachineImpl(final Set<State> states, final State initialState) {
         this.states = states;
@@ -48,13 +49,13 @@ final class FiniteStateMachineImpl implements FiniteStateMachine {
         currentState = initialState;
         transitions = new HashSet<>();
         finalStates = new HashSet<>();
+        transitionHandlers = new HashSet<>();
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    @SuppressWarnings("unchecked")
     public final synchronized State fire(final Event event) throws FiniteStateMachineException {
 
         if (!finalStates.isEmpty() && finalStates.contains(currentState)) {
@@ -72,27 +73,57 @@ final class FiniteStateMachineImpl implements FiniteStateMachine {
                     currentState.equals(transition.getSourceState()) && //fsm is in the right state as expected by transition definition
                     transition.getEventType().equals(event.getClass()) && //fired event type is as expected by transition definition
                     states.contains(transition.getTargetState()) //target state is defined
-                    ) {
-                try {
-                    //perform action, if any
-                    if (transition.getEventHandler() != null) {
-                        transition.getEventHandler().handleEvent(event);
-                    }
-                    //transit to target state
-                    currentState = transition.getTargetState();
+            ) {
+                //perform action for event, if any
+                handleEvent(transition, event);
 
-                    //save last triggered event and transition
-                    lastEvent = event;
-                    lastTransition = transition;
+                //perform external action for transition, if any
+                handleTransition(transition, event);
 
-                    break;
-                } catch (Exception e) {
-                    LOGGER.log(Level.SEVERE, "An exception occurred during handling event " + event + " of transition " + transition, e);
-                    throw new FiniteStateMachineException(transition, event, e);
-                }
+                //transit to target state
+                currentState = transition.getTargetState();
+
+                //save last triggered event and transition
+                lastEvent = event;
+                lastTransition = transition;
+
+                break;
             }
         }
         return currentState;
+    }
+
+    private void handleTransition(Transition transition, Event event) throws FiniteStateMachineException {
+        for (TransitionHandler transitionHandler : transitionHandlers) {
+            try {
+                transitionHandler.handleTransition(transition);
+            } catch (Exception e) {
+                LOGGER.log(Level.SEVERE, "An exception occurred during handling transition " + transition, e);
+                throw new FiniteStateMachineException(transition, event, e);
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void handleEvent(Transition transition, Event event) throws FiniteStateMachineException {
+        if (transition.getEventHandler() != null) {
+            try {
+                transition.getEventHandler().handleEvent(event);
+            } catch (Exception e) {
+                LOGGER.log(Level.SEVERE, "An exception occurred during handling event " + event + " of transition " + transition, e);
+                throw new FiniteStateMachineException(transition, event, e);
+            }
+        }
+    }
+
+    @Override
+    public void addTransitionHandler(TransitionHandler transitionHandler) {
+        transitionHandlers.add(transitionHandler);
+    }
+
+    @Override
+    public void removeTransitionHandler(TransitionHandler transitionHandler) {
+        transitionHandlers.remove(transitionHandler);
     }
 
     void registerTransition(final Transition transition) {
